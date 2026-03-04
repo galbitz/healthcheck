@@ -108,6 +108,25 @@ check_keepalived() {
   fi
 }
 
+check_vault() {
+  if ! systemctl list-unit-files vault.service 2>/dev/null | grep -q vault; then
+    return
+  fi
+  if systemctl is-active --quiet vault 2>/dev/null; then
+    pass "vault is running"
+    local status
+    status=$(vault status 2>/dev/null) || true
+    local sealed
+    sealed=$(echo "$status" | awk '/^Sealed/ { print $2; exit }')
+    echo "  Sealed: ${sealed:-unknown}"
+    if [[ "$sealed" == "true" ]]; then
+      fail "vault is sealed"
+    fi
+  else
+    fail "vault is not running"
+  fi
+}
+
 # --- Main ---
 
 section "System Info"
@@ -117,6 +136,7 @@ section "Services"
 check_zabbix_agent
 check_mdatp
 check_keepalived
+check_vault
 
 echo ""
 echo "----------------------------------------"
